@@ -46,6 +46,9 @@ ESP8266WiFiMulti WiFiMulti;
 #define AIO_SERVERPORT  1883                   // use 8883 for SSL - not set up on the server as yet though
 #define AIO_USERNAME    "asdfasdfas"           // replace this with your own from ledindicator.devsoft.co.za (username)
 #define AIO_KEY         "ghjkghjkgh"           // replace this with your own from ledindicator.devsoft.co.za (password)
+//define subs - username/LED for free, the others are for paid version: 
+#define LED_SUB         "asdfasdfas/LED"
+
 
 /******************************************************* you don't need to change anything below this *************************************************/
 
@@ -62,12 +65,9 @@ Adafruit_MQTT_Client mqtt(&client, AIO_SERVER, AIO_SERVERPORT, AIO_USERNAME, AIO
 
 /****************************** Feeds ***************************************/
 
-// Setup a feed called 'photocell' for publishing.
-// Notice MQTT paths for AIO follow the form: <username>/feeds/<feedname>
-Adafruit_MQTT_Publish photocell = Adafruit_MQTT_Publish(&mqtt, "test");
 
-// Setup a feed called 'onoff' for subscribing to changes.
-Adafruit_MQTT_Subscribe onoffbutton = Adafruit_MQTT_Subscribe(&mqtt, "LED");
+// Setup a feed called 'LEDsignal' for subscribing to changes.
+Adafruit_MQTT_Subscribe LEDsignal = Adafruit_MQTT_Subscribe(&mqtt, LED_SUB);
 
 /*************************** Sketch Code ************************************/
 
@@ -78,14 +78,15 @@ void MQTT_connect();
 void setup() {
   Serial.begin(115200);
   delay(10);
+  //initialise LED:
   pinMode(led, OUTPUT);
   digitalWrite(led, HIGH); //HIGH is off for D1 mini
 
-  Serial.println(F("Adafruit MQTT demo"));
+  Serial.println(F("Welcome to LED Website Indicator"));
   for (uint8_t t = 4; t > 0; t--) {
     Serial.printf("[SETUP] WAIT %d...\n", t);
     Serial.flush();
-    delay(1000);
+    delay(100);
   }
 
   WiFi.mode(WIFI_STA);
@@ -98,8 +99,7 @@ void loop() {
   if ((WiFiMulti.run() == WL_CONNECTED)) {
     WiFiClient client;
     // Setup MQTT subscription for onoff feed.
-    mqtt.subscribe(&onoffbutton);
-    //    HTTPClient http;
+    mqtt.subscribe(&LEDsignal);
 
     // Ensure the connection to the MQTT server is alive (this will make the first
     // connection and automatically reconnect when disconnected).  See the MQTT_connect
@@ -111,30 +111,24 @@ void loop() {
 
     Adafruit_MQTT_Subscribe *subscription;
     while ((subscription = mqtt.readSubscription(5000))) {
-      if (subscription == &onoffbutton) {
+      if (subscription == &LEDsignal) {
         Serial.print(F("Got: "));
-        Serial.println((char *)onoffbutton.lastread);
+        Serial.println((char *)LEDsignal.lastread);
         digitalWrite(led, LOW); //LOW is on for LED_BUILTIN
-        delay(2000);
+        delay(1000); //todo: delay time is a variable, per subscription
         digitalWrite(led, HIGH);
       }
 
-      // Now we can publish stuff!
-      //  Serial.print(F("\nSending photocell val "));
-      //  Serial.print(x);
-      //  Serial.print("...");
-      //  if (! photocell.publish(x++)) {
-      //    Serial.println(F("Failed"));
-      //  } else {
-      //    Serial.println(F("OK!"));
-      //  }
+      
 
       // ping the server to keep the mqtt connection alive
-      // NOT required if you are publishing once every KEEPALIVE seconds
-
+      
       if (! mqtt.ping()) {
         mqtt.disconnect();
+      } else {
+//        Serial.println("ping"); //for debugging purposes
       } 
+
     }
   }
 }
